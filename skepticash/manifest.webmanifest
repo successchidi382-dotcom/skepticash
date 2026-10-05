@@ -1,0 +1,17 @@
+{
+  "name": "SkeptiCash",
+  "short_name": "SkeptiCash",
+  "description": "SkeptiCash mobile earning platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f7f5",
+  "theme_color": "#f7931a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

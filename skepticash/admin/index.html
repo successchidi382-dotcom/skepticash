@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f7931a">
+    <meta name="description" content="SkeptiCash administration">
+    <title>SkeptiCash Admin</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="favicon.svg">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="stylesheet" href="admin.css">
+  </head>
+  <body>
+    <section class="auth-view" data-auth-view>
+      <a class="back-link" href="/">← SkeptiCash website</a>
+      <form class="auth-card" data-admin-auth="login">
+        <span class="mark">S</span><p class="eyebrow">SECURE ADMIN ACCESS</p><h1>Admin sign in</h1>
+        <p class="muted">Use an administrator account provisioned in Supabase.</p>
+        <label>Email<input type="email" name="email" autocomplete="username" required></label>
+        <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+        <button class="primary-button" type="submit">Sign in</button><p class="feedback" aria-live="polite"></p>
+      </form>
+      <p class="config-message" data-config-message hidden>Admin access requires the Supabase project URL and publishable key in this deployment’s supabase-config.js.</p>
+    </section>
+
+    <div class="admin-app" hidden>
+      <aside class="sidebar">
+        <a class="admin-brand" href="/"><span class="mark">S</span><span>SkeptiCash<small>ADMIN CONSOLE</small></span></a>
+        <nav aria-label="Admin navigation">
+          <button class="nav-link active" data-admin-page="overview">◫ <span>Overview</span></button>
+          <button class="nav-link" data-admin-page="users">♙ <span>Users</span></button>
+          <button class="nav-link" data-admin-page="deposits">↓ <span>Deposits</span><i data-pending-deposits>0</i></button>
+          <button class="nav-link" data-admin-page="withdrawals">↗ <span>Withdrawals</span><i data-pending-count>0</i></button>
+          <button class="nav-link" data-admin-page="transactions">↔ <span>Transactions</span></button>
+          <button class="nav-link" data-admin-page="referrals">♧ <span>Referrals</span></button>
+          <button class="nav-link" data-admin-page="plans">Ⅱ <span>VIP plans</span></button>
+          <button class="nav-link" data-admin-page="tasks">✓ <span>Tasks</span></button>
+          <button class="nav-link" data-admin-page="announcements">▤ <span>Announcements</span></button>
+          <button class="nav-link" data-admin-page="settings">⚙ <span>General settings</span></button>
+        </nav>
+        <button class="logout-button" data-action="logout">↗ <span>Sign out</span></button>
+      </aside>
+      <main class="admin-main">
+        <header class="admin-topbar"><div><p class="eyebrow">SKEPTICASH OPERATIONS</p><h1 data-page-title>Overview</h1></div><span class="admin-user" data-admin-email>Admin</span></header>
+
+        <section class="admin-page active" data-page="overview">
+          <p class="page-intro">A clear view of your members, wallets, and platform activity.</p>
+          <div class="stat-grid"><article class="stat-card"><span>MEMBERS</span><b data-stat="users">—</b><small>Registered accounts</small></article><article class="stat-card"><span>WALLET BALANCES</span><b data-stat="balance">—</b><small>Combined member balances</small></article><article class="stat-card"><span>PENDING DEPOSITS</span><b data-stat="deposits">—</b><small>Awaiting review</small></article><article class="stat-card"><span>PENDING WITHDRAWALS</span><b data-stat="withdrawals">—</b><small>Awaiting review</small></article><article class="stat-card"><span>TRANSACTIONS</span><b data-stat="transactions">—</b><small>Recorded wallet activity</small></article></div>
+          <div class="content-card"><div class="card-heading"><div><h2>Recent activity</h2><p>Latest wallet records</p></div><button class="soft-button" data-refresh>Refresh</button></div><div class="table-wrap"><table><thead><tr><th>MEMBER</th><th>TYPE</th><th>AMOUNT</th><th>STATUS</th><th>DATE</th></tr></thead><tbody data-recent-transactions></tbody></table></div></div>
+        </section>
+
+        <section class="admin-page" data-page="users">
+          <div class="page-intro">Review member details and make controlled balance or VIP-level adjustments.</div>
+          <div class="content-card"><div class="card-heading"><div><h2>Members</h2><p>Review member phone and referral details; manage display name, wallet balance and VIP level</p></div><button class="soft-button" data-refresh>Refresh members</button><input class="search-input" type="search" placeholder="Search members, phones or referral codes" data-user-search></div><div class="table-wrap"><table><thead><tr><th>MEMBER</th><th>PHONE</th><th>REFERRAL CODE</th><th>REFERRED BY</th><th>VIP</th><th>BALANCE</th><th>JOINED</th><th>MANAGE DASHBOARD</th></tr></thead><tbody data-users></tbody></table></div><p class="table-note" data-user-count></p></div>
+        </section>
+
+        <section class="admin-page" data-page="deposits">
+          <div class="page-intro">Review bank transfer requests and update earlier decisions when needed. Approval credits the member wallet once; reversing an approval removes the credited amount if available.</div>
+          <div class="content-card"><div class="card-heading"><div><h2>Deposit requests</h2><p>Approve, reject, or restore any request</p></div><button class="soft-button" data-refresh>Refresh</button></div><div class="table-wrap"><table><thead><tr><th>MEMBER</th><th>AMOUNT</th><th>STATUS</th><th>SUBMITTED</th><th>EXPIRES</th><th>REVIEW NOTE</th><th>DECISION</th></tr></thead><tbody data-deposits></tbody></table></div></div>
+        </section>
+
+        <section class="admin-page" data-page="withdrawals">
+          <div class="page-intro">Review requests and update earlier decisions when needed. Approval records an admin decision only; no money is transferred. Rejected reserved amounts are returned to the member wallet.</div>
+          <div class="content-card"><div class="card-heading"><div><h2>Withdrawal requests</h2><p>Requests debit the member wallet immediately. Rejection refunds the wallet; approval records a decision for manual bank payout.</p></div><button class="soft-button" data-refresh>Refresh</button></div><div class="table-wrap"><table><thead><tr><th>MEMBER</th><th>ACCOUNT NAME</th><th>ACCOUNT NUMBER</th><th>BANK</th><th>AMOUNT</th><th>STATUS</th><th>REQUESTED</th><th>REVIEW NOTE</th><th>DECISION</th></tr></thead><tbody data-withdrawals></tbody></table></div></div>
+        </section>
+
+        <section class="admin-page" data-page="transactions">
+          <div class="page-intro">All transaction records visible to administrators.</div>
+          <div class="content-card"><div class="card-heading"><div><h2>Transactions</h2><p>Most recent records</p></div><button class="soft-button" data-refresh>Refresh</button></div><div class="table-wrap"><table><thead><tr><th>MEMBER</th><th>TYPE</th><th>DESCRIPTION</th><th>AMOUNT</th><th>STATUS</th><th>DATE</th><th>RESTORE / REVIEW</th></tr></thead><tbody data-transactions></tbody></table></div></div>
+        </section>
+
+        <section class="admin-page" data-page="referrals">
+          <p class="page-intro">Referral attribution and rewards earned when a directly referred member's VIP payment is approved.</p>
+          <div class="content-card"><div class="card-heading"><div><h2>Referral network</h2><p>VIP plan rewards are paid to the direct referrer only after admin approval.</p></div><button class="soft-button" data-refresh>Refresh</button></div><div class="table-wrap"><table><thead><tr><th>REFERRER PHONE</th><th>REFERRED PHONE</th><th>LEVEL</th><th>VIP REWARD</th><th>EARNINGS</th><th>DATE</th></tr></thead><tbody data-referrals></tbody></table></div></div>
+        </section>
+
+        <section class="admin-page" data-page="plans">
+          <p class="page-intro">Update plan prices, daily task limits, and commissions shown in the member dashboard.</p>
+          <div class="content-card"><div class="card-heading"><div><h2>VIP plans</h2><p>Daily income is stored as the total if every task is completed.</p></div><button class="soft-button" data-refresh>Reload</button></div><div class="table-wrap"><table><thead><tr><th>LEVEL</th><th>UPGRADE COST (₦)</th><th>DAILY TASKS</th><th>COMMISSION / TASK (₦)</th><th>DAILY TOTAL (₦)</th><th>SAVE</th></tr></thead><tbody data-plans></tbody></table></div></div>
+          <div class="content-card"><div class="card-heading"><div><h2>VIP payment requests</h2><p>Every generated VIP payment request appears here. Verify the transfer before approving; approval activates the selected plan without crediting the member's wallet. Any configured referral reward is credited separately to the direct referrer.</p></div><button class="soft-button" data-refresh>Refresh</button></div><p class="table-note" data-vip-payment-error role="status" aria-live="polite"></p><div class="table-wrap"><table><thead><tr><th>MEMBER</th><th>VIP PLAN</th><th>PLAN AMOUNT</th><th>STATUS</th><th>SUBMITTED</th><th>EXPIRES</th><th>REVIEW NOTE</th><th>DECISION</th></tr></thead><tbody data-vip-payments></tbody></table></div></div>
+        </section>
+
+        <section class="admin-page" data-page="tasks">
+          <p class="page-intro">Create tasks with a reward, preview and view uploaded media, replace the image or video, or delete a task at any time. Deleting hides it from members while preserving completion history. Only members with an active VIP plan can complete tasks; image/video tasks must be tapped within 10 seconds.</p>
+          <div class="content-card"><div class="card-heading"><div><h2>Create a task</h2><p>Preview the image or video before adding the task to the member app.</p></div></div><form class="task-create-form" data-task-create><label>Title<input name="title" required maxlength="100"></label><label>Description<input name="description" maxlength="500"></label><label>Reward (₦)<input name="reward" type="number" min="0" step="1" required></label><label>Optional image or video<input name="media" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"></label><div class="task-media-preview" data-task-media-preview hidden></div><button class="primary-button" type="submit">Create task</button></form></div>
+          <div class="content-card"><div class="card-heading"><div><h2>Manage tasks</h2><p>Update rewards, copy, or availability</p></div><button class="soft-button" data-refresh>Reload</button></div><div class="task-admin-list" data-tasks></div></div>
+        </section>
+
+        <section class="admin-page" data-page="announcements">
+          <p class="page-intro">Publish member announcements or update and archive existing notices.</p>
+          <div class="content-card"><div class="card-heading"><div><h2>New announcement</h2><p>Active announcements appear in member notifications.</p></div></div><form class="announcement-form" data-announcement-create><label>Title<input name="title" required maxlength="120"></label><label>Message<textarea name="body" rows="4" required maxlength="2000"></textarea></label><button class="primary-button" type="submit">Publish announcement</button></form></div>
+          <div class="content-card"><div class="card-heading"><div><h2>Published announcements</h2><p>Manage current platform notices</p></div></div><div class="announcement-list" data-announcements></div></div>
+        </section>
+
+        <section class="admin-page" data-page="settings">
+          <p class="page-intro">Manage the default member account values and manual bank transfer details.</p>
+          <div class="content-card settings-card">
+            <div class="card-heading"><div><h2>Client account defaults</h2><p>Saved defaults apply to future signups and untouched accounts.</p></div></div>
+            <form class="account-defaults-form" data-account-defaults>
+              <label>Starting wallet balance (₦)<input name="startingBalance" type="number" min="0" max="999999999999.99" step="0.01" required></label>
+              <label>Default VIP level<select name="vipLevel"><option value="0">VIP 0</option><option value="1">VIP 1</option><option value="2">VIP 2</option><option value="3">VIP 3</option><option value="4">VIP 4</option><option value="5">VIP 5</option><option value="6">VIP 6</option><option value="7">VIP 7</option><option value="8">VIP 8</option><option value="9">VIP 9</option></select></label>
+              <button class="primary-button" type="submit">Save defaults</button>
+            </form>
+            <p class="table-note">The balance default updates new accounts and existing wallets without previous wallet activity or admin balance adjustments. The VIP default updates accounts whose VIP level has not been individually adjusted. User names and phone numbers stay specific to each account.</p>
+          </div>
+          <div class="content-card settings-card">
+            <div class="card-heading"><div><h2>VIP referral rewards</h2><p>Set the one-time amount paid to a direct referrer when each VIP level purchase is approved.</p></div></div>
+            <form class="account-defaults-form" data-vip-referral-rewards>
+              <div class="vip-referral-reward-fields" data-vip-referral-reward-fields></div>
+              <button class="primary-button" type="submit">Save VIP referral rewards</button>
+            </form>
+          </div>
+          <div class="content-card settings-card">
+            <div class="card-heading"><div><h2>Manual bank transfer details</h2><p>These details are shown to members after they request a deposit.</p></div></div>
+            <form class="manual-deposit-settings-form" data-manual-deposit-settings>
+              <label>Account name<input name="accountName" maxlength="160" required></label>
+              <label>Account number<input name="accountNumber" maxlength="40" required></label>
+              <label>Bank name<input name="bankName" maxlength="120" required></label>
+              <label>Payment instruction<textarea name="instruction" rows="3" maxlength="2000"></textarea></label>
+              <button class="primary-button" type="submit">Save bank details</button>
+            </form>
+          </div>
+          <div class="content-card settings-card">
+            <div class="card-heading"><div><h2>Withdrawal days</h2><p>Choose the weekdays on which members may submit withdrawal requests.</p></div></div>
+            <form class="withdrawal-days-form" data-withdrawal-days>
+              <div class="weekday-options" data-weekday-options></div>
+              <button class="primary-button" type="submit">Save withdrawal days</button>
+            </form>
+          </div>
+        </section>
+        <p class="admin-error" data-admin-error role="status" aria-live="polite"></p>
+      </main>
+    </div>
+    <div class="toast" role="status" aria-live="polite"></div>
+    <script src="supabase-config.js"></script>
+    <script src="supabase-client.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>

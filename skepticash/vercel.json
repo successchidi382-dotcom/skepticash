@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/member-auth.js": {
+      "maxDuration": 10
+    }
+  }
+}

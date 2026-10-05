@@ -1,0 +1,73 @@
+# SkeptiCash
+
+SkeptiCash is a mobile-first member application and administrator portal hosted by one Vercel project: the member site is at `/`, the admin portal at `/admin/`, and the server-side member authentication endpoint at `/api/member-auth`. The administrator uses Supabase Auth; members sign in with phone/password and securely hashed passwords. Both frontends use the same Supabase database. The member dashboard retains its existing layout and styling; the public homepage and authentication pages sit before the protected dashboard.
+
+Deposits and VIP plans use manual bank transfers configured by an administrator; there is no Paystack dependency or checkout. Members receive a 25-minute payment window and admins review each payment. Approved deposits credit the wallet; approved VIP payments activate the selected plan without crediting the wallet. Withdrawal approval records the decision only and does not send money.
+
+## Supabase setup
+
+1. Create or select the Supabase project.
+2. For a **new** project, apply [`supabase/migrations/202610030001_initial_schema.sql`](./supabase/migrations/202610030001_initial_schema.sql) in the Supabase SQL Editor.
+3. Apply [`supabase/migrations/202610030002_financial_requests.sql`](./supabase/migrations/202610030002_financial_requests.sql). It adds deposit requests, private receipt storage, wallet summaries, atomic review operations, and the withdrawal request RPC to the existing tables. If migration 001 has already been applied to your existing project, apply **only** migration 002.
+4. Apply [`supabase/migrations/202610040001_account_defaults.sql`](./supabase/migrations/202610040001_account_defaults.sql). It adds configurable starting wallet and VIP defaults for new signups and accounts whose respective values have not been individually customized. Existing wallets with activity or non-zero balances are preserved.
+5. Apply [`supabase/migrations/202610040002_manual_bank_deposits.sql`](./supabase/migrations/202610040002_manual_bank_deposits.sql) after migrations 001 and 002. It repairs the missing `announcements.title` column, adds manual transfer settings and expiring deposit records, and installs the scoped RPCs used by the member and admin apps. The observed production error means the live `announcements` table does not have the `title` column requested by the admin dashboard; this migration adds it idempotently while preserving existing announcements.
+6. If the live `announcements` table also lacks `body`, apply [`supabase/migrations/202610040003_repair_announcement_body.sql`](./supabase/migrations/202610040003_repair_announcement_body.sql).
+7. Apply [`supabase/migrations/202610040004_wallet_summary_and_payment_confirmation.sql`](./supabase/migrations/202610040004_wallet_summary_and_payment_confirmation.sql) after migrations 001–003. It fixes the wallet summary’s task earnings column (`task_completions.reward_amount`), adds the member payment-confirmation action and admin notice, and provides individual member dashboard management.
+8. Apply [`supabase/migrations/202610040005_wallet_withdrawal_and_review_controls.sql`](./supabase/migrations/202610040005_wallet_withdrawal_and_review_controls.sql). It adds bank destination details for withdrawals, supports restoring a rejected deposit to pending review, and preserves in-app wallet debit/refund behavior.
+9. Apply [`supabase/migrations/202610040006_admin_review_withdrawal_schedule_task_media.sql`](./supabase/migrations/202610040006_admin_review_withdrawal_schedule_task_media.sql). It adds configurable withdrawal weekdays, server-side schedule enforcement, re-review and wallet reconciliation for deposits/withdrawals, and private image/video storage for task banners.
+10. Apply [`supabase/migrations/202610040007_vip_payments_and_daily_media_challenges.sql`](./supabase/migrations/202610040007_vip_payments_and_daily_media_challenges.sql). It adds daily timed task-media attempts and separate VIP bank-payment requests. A successful tap records a task completion and reward; the VIP approval flow changes the member's plan, not their wallet balance. It drops and recreates the VIP-request function so it can be rerun if Supabase has a previous version with differently named input parameters.
+11. If the Admin dashboard reports that `admin_expire_vip_payments` is missing from the schema cache, apply [`supabase/migrations/202610040008_repair_vip_payment_expiry_rpc.sql`](./supabase/migrations/202610040008_repair_vip_payment_expiry_rpc.sql) after migration 007. It recreates the admin-only expiry RPC, grants it to authenticated users (with an internal admin check), and reloads the PostgREST schema cache.
+12. Apply [`supabase/migrations/202610040009_repair_vip_payment_visibility_and_history.sql`](./supabase/migrations/202610040009_repair_vip_payment_visibility_and_history.sql). This ensures VIP requests are readable by admins, backfills transaction-history entries for previous VIP requests, creates a transaction for every new request, and updates the transaction description and member VIP level after an admin decision. VIP purchase records do not alter wallet balances.
+13. Apply [`supabase/migrations/202610050010_phone_auth_and_first_deposit_referrals.sql`](./supabase/migrations/202610050010_phone_auth_and_first_deposit_referrals.sql) **after migrations 007, 008 (if needed), and 009**. It adds phone-based accounts and contact details and phone-aware manual payment requests. Keep this migration after 009 because it changes the VIP-request function argument from email to phone.
+14. Apply [`supabase/migrations/202610050011_admin_task_media_management.sql`](./supabase/migrations/202610050011_admin_task_media_management.sql). It adds task soft deletion so admins can remove tasks at any time without deleting member completion history.
+15. Apply [`supabase/migrations/202610050012_vip_referral_rewards.sql`](./supabase/migrations/202610050012_vip_referral_rewards.sql) after migrations 010 and 011. It replaces first-deposit referral rewards with admin-configured rewards for each VIP level, paid to the direct referrer only after approval of that VIP payment. Each referred member can earn at most one reward per VIP level, and the reward ledger prevents duplicate wallet credits.
+16. Apply [`supabase/migrations/202610050013_custom_member_auth.sql`](./supabase/migrations/202610050013_custom_member_auth.sql) after migrations 010–012. It adds private member credential/session tables, hashed-password account creation and rate limiting, and updates payment RPCs to use the member profile phone. New clients no longer require Supabase Auth's Phone provider. Existing members cannot carry their old passwords over; issue each client a temporary password from the Admin Members page after deploying. They must change it at their first sign-in. Their old Supabase Auth accounts are not deleted.
+17. Keep Supabase Auth email/password sign-in enabled for administrators and disable the Phone provider after migration 013. Client signup asks for phone, password and optional referral code without SMS verification. Migration 013 revokes existing member Supabase sessions; issue existing clients their one-time temporary password from the Admin Members page and have them change it immediately.
+18. Configure these **server-only** environment variables in the Vercel project: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_JWT_SECRET`. The JWT secret must match an HS256/legacy signing key currently accepted by the Supabase API gateway. Set `MEMBER_APP_ORIGIN` and `ADMIN_APP_ORIGIN` to the same production origin because both apps are hosted by this one project. Make sure variables apply to **Production**, then redeploy. Never place the service-role key or JWT signing secret in frontend config. After deployment, visit `/api/member-auth`; its readiness response reports which server variable names (never values) are missing.
+19. Deploy the **whole repository root as one Vercel project** so its `index.html`, `admin/` directory, and `api/member-auth.js` serverless function are deployed together. Keep Vercel's Root Directory set to `.` and leave Build Command and Output Directory blank for Vercel's static HTML plus Functions detection. [`vercel.json`](./vercel.json) registers the function and [`.vercelignore`](./.vercelignore) excludes only the SQL folder and README; `admin/` must remain included. The member app is at `/`, admin sign-in at `/admin/`, and the API at `/api/member-auth`. The member app still uses its publishable/anon key for browser database requests; configure `window.SKEPTICASH_SUPABASE` in [`supabase-config.js`](./supabase-config.js) with the project URL and publishable/anon key.
+20. Keep the existing administrator email/password Auth user (disable public signup on the admin app), then confirm or assign the role from the Supabase SQL Editor:
+
+   ```sql
+   update public.profiles
+   set role = 'admin'
+   where id = (
+     select id from auth.users
+     where email = 'admin@example.com'
+   );
+   ```
+
+   Replace the example email with the administrator account's existing email. Admin sign-in uses that email and the existing Supabase password. Never expose admin role assignment through a public signup form or browser API.
+
+The SQL migrations seed the nine supplied VIP plans and enable row-level security. Custom member access tokens are signed by the member serverless function, so existing `auth.uid()` policies continue to scope database access. Passwords are stored only as salted scrypt hashes in a server-only credential table. Admins can issue a temporary replacement password, but cannot view the member's existing password or its hash.
+
+## Deploy to Vercel
+
+- Use **one Vercel project** for both apps and the authentication API. Import this repository through GitHub/Git integration or deploy it with the Vercel CLI. Set Root Directory to `.`, and leave Build Command and Output Directory blank. Deploying the `admin/` folder by itself or uploading only static files omits the `api/member-auth.js` serverless function, so signup/login will not work.
+- After deployment, the member app is served at `/`, the admin app at `/admin/`, and the member auth API at `/api/member-auth`. Both apps use the same Supabase project; the admin keeps its separate email/password Supabase Auth login.
+- Set all four server-only Supabase environment variables on that Vercel project, for Production, then redeploy. Never put service-role keys or JWT secrets in frontend configuration.
+
+For local preview, serve the repository root over HTTP (rather than opening `index.html` with `file://`). Use any static-file server available in your environment. The admin preview is under `/admin/`.
+
+## Application capabilities
+
+### Member site
+
+- Public overview, VIP explanation, referral explanation, FAQs, phone/password signup and login.
+- Server-backed phone/password login and signup using only phone number and password, with an optional referral code. Passwords are scrypt-hashed; admins can issue temporary passwords that members must replace on first sign-in, and members can change passwords in Profile → Security.
+- Protected member dashboard with Supabase-backed profile, wallet summary, plans, task completion, transaction history, announcements and referral activity.
+- Balance visibility toggle.
+- Manual bank-transfer deposits collect full name, registered phone number and amount, display admin-configured payment details with copy buttons, allow members to report a completed transfer, and expire after 25 minutes if unreported. Only admin approval credits the wallet.
+- Withdrawal requests collect account holder name, account number and bank name, and deduct the requested amount from the SkeptiCash wallet immediately. An administrator configures allowed weekdays; the database enforces the schedule using Africa/Lagos time. A rejection refunds the wallet; approval records the decision but does not send a bank payout.
+- Administrators can preview selected task images/videos before creating or saving the task, then view the saved media, edit its task and reward, replace the media, or delete the task at any time. Deletion hides the task but preserves completion history.
+- Active task media appears as a temporary banner for ten seconds on the Tasks page.
+- Only members with an active VIP plan can start or complete any task; this is enforced by the database as well as the member UI. VIP members must tap the task image/video within ten seconds before it fades. Each media task permits one attempt per member per Africa/Lagos calendar day; a missed attempt cannot be retried until the next day.
+- VIP upgrades show the selected database price as read-only, collect member name and phone number, and use the configured bank details. The payment request is listed for admin approval and appears in transaction history as a VIP plan payment; approval activates the selected VIP level without adding the payment amount to the wallet.
+- Each member has a shareable referral link/code. Admins configure a reward amount per VIP level in General Settings; the direct referrer receives the matching reward only after the referred member's VIP payment is approved. Repeated reviews cannot pay the same referred member's VIP level twice.
+- Transaction history supports type, status, date filters and 50-record pages.
+
+### Admin site
+
+- Independent admin email/password login using the existing Supabase account; signed-in users without the admin role are rejected.
+- User and wallet overview, administrator balance adjustment, VIP-level assignment, member phone/referral-code/referrer review and temporary-password resets (current passwords and hashes are never exposed), configurable starting-balance and VIP defaults for new and individually untouched accounts, manual deposit bank settings and deposit/withdrawal review or re-review, configurable withdrawal weekdays, transaction/referral views, VIP pricing and payment review (refreshed on entry, tab return, and every 15 seconds), task management and media uploads, and announcement management.
+
+After applying the migrations, sign into the admin dashboard and save Account Name, Account Number, Bank Name, and Payment Instruction under Settings before members submit deposits. Configure referral rewards separately for each VIP level in General Settings; all levels default to ₦0. New VIP referral rewards are credited to the direct referrer's SkeptiCash wallet only when the referred member's VIP purchase is approved. Existing rewards paid for deposits before migration 012 are not reversed. All displayed earnings are dependent on platform activity and verification; VIP plan amounts are not guaranteed income.
